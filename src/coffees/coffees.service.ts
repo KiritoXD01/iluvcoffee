@@ -4,12 +4,15 @@ import { Repository } from 'typeorm';
 import { CreateCoffeeDto } from './dto/create-coffee.dto/create-coffee.dto';
 import { UpdateCoffeeDto } from './dto/update-coffee.dto/update-coffee.dto';
 import { Coffee } from './entities/coffee.entity';
+import { Flavor } from './entities/flavor.entity';
 
 @Injectable()
 export class CoffeesService {
     constructor(
         @InjectRepository(Coffee)
         private readonly coffeesRepository: Repository<Coffee>,
+        @InjectRepository(Flavor)
+        private readonly flavorsRepository: Repository<Flavor>,
     ) {}
 
     async findAll(): Promise<Coffee[]> {
@@ -28,7 +31,15 @@ export class CoffeesService {
     }
 
     async create(createCoffeeDto: CreateCoffeeDto): Promise<Coffee> {
-        const coffee = this.coffeesRepository.create(createCoffeeDto);
+        const flavors = await Promise.all(
+            createCoffeeDto.flavors.map((name) =>
+                this.preloadFlavorByName(name),
+            ),
+        );
+        const coffee = this.coffeesRepository.create({
+            ...createCoffeeDto,
+            flavors,
+        });
         return await this.coffeesRepository.save(coffee);
     }
 
@@ -36,9 +47,17 @@ export class CoffeesService {
         id: number,
         updateCoffeeDto: UpdateCoffeeDto,
     ): Promise<Coffee> {
+        const flavors =
+            updateCoffeeDto.flavors &&
+            (await Promise.all(
+                updateCoffeeDto.flavors.map((name) =>
+                    this.preloadFlavorByName(name),
+                ),
+            ));
         const coffee = await this.coffeesRepository.preload({
             id,
             ...updateCoffeeDto,
+            flavors,
         });
         if (!coffee) throw new NotFoundException(`Coffee #${id} not found`);
         return this.coffeesRepository.save(coffee);
@@ -47,5 +66,13 @@ export class CoffeesService {
     async remove(id: number): Promise<void> {
         const coffee = await this.findOne(id);
         await this.coffeesRepository.remove(coffee);
+    }
+
+    private async preloadFlavorByName(name: string): Promise<Flavor> {
+        const existingFlavor = await this.flavorsRepository.findOne({
+            where: { name },
+        });
+        if (existingFlavor) return existingFlavor;
+        return this.flavorsRepository.create({ name });
     }
 }
