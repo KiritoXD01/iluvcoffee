@@ -82,7 +82,7 @@ export class CoffeesService {
         return this.flavorsRepository.create({ name });
     }
 
-    async recommendCoffee(coffee: Coffee): Promise<Coffee> {
+    async recommendCoffee(coffee: Coffee): Promise<void> {
         const queryRunner = this.dataSource.createQueryRunner();
         await queryRunner.connect();
         await queryRunner.startTransaction();
@@ -96,7 +96,6 @@ export class CoffeesService {
             await queryRunner.manager.save(coffee);
             await queryRunner.manager.save(recommendEvent);
             await queryRunner.commitTransaction();
-            return coffee;
         } catch (err) {
             await queryRunner.rollbackTransaction();
         } finally {
