@@ -22,7 +22,7 @@ export class CoffeesService {
         private readonly configService: ConfigService,
     ) {
         /* Accessing process.env variables from ConfigService */
-        const databaseHost = this.configService.get<string>('DATABASE_HOST');
+        const databaseHost = this.configService.get('coffees');
         console.log(databaseHost);
     }
 
